@@ -160,6 +160,7 @@
     -webkit-tap-highlight-color: transparent;
   }
   .diff-btn.selected { border-color: var(--accent3); color: var(--accent3); background: rgba(92,255,160,0.07); }
+  .diff-btn.xhard.selected { border-color: var(--accent2); color: var(--accent2); background: rgba(255,92,92,0.07); }
   .diff-btn:active { transform: scale(0.96); }
 
   /* ===== START BTN ===== */
@@ -514,6 +515,10 @@
           <span class="icon">➗</span>
           <span class="label">Division</span>
         </button>
+        <button class="mode-btn" data-mode="?" onclick="selectMode(this)" style="grid-column:span 2;">
+          <span class="icon">🎲</span>
+          <span class="label">Random — Mix of all four</span>
+        </button>
       </div>
     </div>
 
@@ -523,6 +528,7 @@
         <button class="diff-btn selected" data-diff="easy" onclick="selectDiff(this)">Easy</button>
         <button class="diff-btn" data-diff="medium" onclick="selectDiff(this)">Medium</button>
         <button class="diff-btn" data-diff="hard" onclick="selectDiff(this)">Hard</button>
+        <button class="diff-btn xhard" data-diff="xhard" onclick="selectDiff(this)">X-Hard</button>
       </div>
     </div>
 
@@ -625,14 +631,17 @@ let timerInterval = null;
 let answered = false;
 let currentAnswer = 0;
 let typedValue = '';
+let activeOp = '+';
 
 const TOTAL_Q = 10;
 const TYPED_MODES = new Set(['+', '-', '×']); // division keeps MCQ
+const ALL_OPS = ['+', '-', '×', '÷'];
 
 const DIFF_CONFIG = {
-  easy:   { range: [1, 12],  time: 15 },
-  medium: { range: [5, 25],  time: 12 },
-  hard:   { range: [10, 99], time: 8  },
+  easy:   { range: [1, 12],   time: 3 },
+  medium: { range: [5, 25],   time: 6 },
+  hard:   { range: [10, 99],  time: 10  },
+  xhard:  { range: [25, 999], time: 30  },
 };
 
 function selectMode(btn) {
@@ -678,7 +687,7 @@ function buildStreakBar() {
   }
 }
 
-function isTypedMode() { return TYPED_MODES.has(mode); }
+function isTypedMode() { return TYPED_MODES.has(activeOp); }
 
 function nextQuestion() {
   if (qIndex >= TOTAL_Q) { endGame(); return; }
@@ -688,16 +697,21 @@ function nextQuestion() {
   const [lo, hi] = cfg.range;
   timerMax = cfg.time;
 
+  // Pick operation — random picks one each question
+  activeOp = (mode === '?') ? ALL_OPS[Math.floor(Math.random() * ALL_OPS.length)] : mode;
+
   let a = rand(lo, hi), b = rand(lo, hi);
 
-  if (mode === '-') {
+  if (activeOp === '-') {
     if (b > a) [a, b] = [b, a];
     currentAnswer = a - b;
-  } else if (mode === '×') {
+  } else if (activeOp === '×') {
     if (diff === 'easy') { a = rand(1, 12); b = rand(1, 12); }
+    else if (diff === 'xhard') { a = rand(10, 99); b = rand(10, 99); }
     currentAnswer = a * b;
-  } else if (mode === '÷') {
+  } else if (activeOp === '÷') {
     if (diff === 'easy') { b = rand(1, 12); a = b * rand(1, 12); }
+    else if (diff === 'xhard') { b = rand(2, 99); a = b * rand(2, 50); }
     else { b = rand(2, 12); a = b * rand(2, Math.min(hi, 15)); }
     currentAnswer = a / b;
   } else {
@@ -705,7 +719,7 @@ function nextQuestion() {
   }
 
   document.getElementById('q-text').innerHTML =
-    `${a} <span class="op">${mode}</span> ${b}`;
+    `${a} <span class="op">${activeOp}</span> ${b}`;
   document.getElementById('q-num').textContent = `Question ${qIndex + 1}`;
   document.getElementById('q-display').textContent = qIndex + 1;
 
